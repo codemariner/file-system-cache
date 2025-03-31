@@ -17,9 +17,10 @@ export class FileSystemCache {
   readonly basePath: string;
   readonly ns?: any;
   readonly extension?: string;
-  readonly hash: t.HashAlgorithm;
+  readonly hash: t.HashAlgorithm | ((value:any) => string);
   readonly ttl: number;
   basePathExists?: boolean;
+  toJson: (value: any, ttl: number) => string;
 
   /**
    * Constructor.
@@ -38,7 +39,6 @@ export class FileSystemCache {
   constructor(options: t.FileSystemCacheOptions = {}) {
     this.basePath = formatPath(options.basePath);
     this.hash = options.hash ?? 'sha1';
-    this.ns = Util.hash(this.hash, options.ns);
     this.ttl = options.ttl ?? 0;
     if (Util.isString(options.extension)) this.extension = options.extension;
 
@@ -46,9 +46,16 @@ export class FileSystemCache {
       throw new Error(`The basePath '${this.basePath}' is a file. It should be a folder.`);
     }
 
-    if (!Util.hashExists(this.hash)) {
-      throw new Error(`Hash does not exist: ${this.hash}`);
+    if (typeof this.hash === 'string') {
+        this.ns = Util.hash(this.hash, options.ns);
+        if (!Util.hashExists(this.hash)) {
+          throw new Error(`Hash does not exist: ${this.hash}`);
+        }
+    } else {
+        this.ns = Util.hash('sha1', options.ns);
     }
+
+    this.toJson = options.toJson ?? Util.toJson;
   }
 
   /**
@@ -57,7 +64,7 @@ export class FileSystemCache {
    */
   public path(key: string): string {
     if (Util.isNothing(key)) throw new Error(`Path requires a cache key.`);
-    let name = Util.hash(this.hash, key);
+    let name = typeof this.hash === 'function' ? this.hash(key) : Util.hash(this.hash, key);
     if (this.ns) name = `${this.ns}-${name}`;
     if (this.extension) name = `${name}.${this.extension.replace(/^\./, '')}`;
     return `${this.basePath}/${name}`;
@@ -110,7 +117,7 @@ export class FileSystemCache {
     const path = this.path(key);
     ttl = typeof ttl === 'number' ? ttl : this.ttl;
     await this.ensureBasePath();
-    await fse.outputFile(path, Util.toJson(value, ttl));
+    await fse.outputFile(path, this.toJson(value, ttl));
     return { path };
   }
 
@@ -122,7 +129,7 @@ export class FileSystemCache {
    */
   public setSync(key: string, value: any, ttl?: number) {
     ttl = typeof ttl === 'number' ? ttl : this.ttl;
-    fse.outputFileSync(this.path(key), Util.toJson(value, ttl));
+    fse.outputFileSync(this.path(key), this.toJson(value, ttl));
     return this;
   }
 

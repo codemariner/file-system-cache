@@ -5,6 +5,7 @@ export type FileSystemCacheOptions = {
   basePath?: string;
   ns?: any;
   ttl?: number;
-  hash?: HashAlgorithm;
+  hash?: HashAlgorithm | ((value: any) => string);
   extension?: string;
+  toJson?: ((value: any, ttl: number) => string);
 };

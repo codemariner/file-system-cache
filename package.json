@@ -1,7 +1,7 @@
 {
-  "name": "file-system-cache",
+  "name": "@codemariner/file-system-cache",
   "version": "3.0.0",
-  "description": "A super-fast, promise-based cache that reads and writes to the file-system.",
+  "description": "A super-fast, promise-based cache that reads and writes to the file-system. This is a fork of the original file-system-cache package.",
   "keywords": [
     "cache",
     "fs",
